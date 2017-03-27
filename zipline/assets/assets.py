@@ -16,6 +16,7 @@ from abc import ABCMeta
 import array
 import binascii
 from collections import deque, namedtuple
+from functools import partial
 from numbers import Integral
 from operator import itemgetter, attrgetter
 import struct
@@ -1040,37 +1041,42 @@ class AssetFinder(object):
         add_sid = _encode_continuous_future_sid(root_symbol, offset,
                                                 roll_style,
                                                 'add')
-        mul_cf = ContinuousFuture(mul_sid,
-                                  root_symbol,
-                                  offset,
-                                  roll_style,
-                                  oc.start_date,
-                                  oc.end_date,
-                                  exchange,
-                                  'mul')
-        add_cf = ContinuousFuture(add_sid,
-                                  root_symbol,
-                                  offset,
-                                  roll_style,
-                                  oc.start_date,
-                                  oc.end_date,
-                                  exchange,
-                                  'add')
-        cf = ContinuousFuture(sid,
-                              root_symbol,
-                              offset,
-                              roll_style,
-                              oc.start_date,
-                              oc.end_date,
-                              exchange,
-                              adjustment_children={
-                                  'mul': mul_cf,
-                                  'add': add_cf
-                              })
+
+        cf_template = partial(
+            ContinuousFuture,
+            root_symbol=root_symbol,
+            offset=offset,
+            roll_style=roll_style,
+            start_date=oc.start_date,
+            end_date=oc.end_date,
+            exchange=exchange,
+        )
+        _no_adjustment_cf = cf_template(sid=sid)
+        _mul_cf = cf_template(sid=mul_sid, adjustment='mul')
+        _add_cf = cf_template(sid=add_sid, adjustment='add')
+        adjustment_children = {
+            None: _no_adjustment_cf,
+            'mul': _mul_cf,
+            'add': _add_cf,
+        }
+
+        cf = cf_template(sid=sid, adjustment_children=adjustment_children)
+        mul_cf = cf_template(
+            sid=mul_sid,
+            adjustment='mul',
+            adjustment_children=adjustment_children,
+        )
+        add_cf = cf_template(
+            sid=add_sid,
+            adjustment='add',
+            adjustment_children=adjustment_children,
+        )
+
         self._asset_cache[cf.sid] = cf
-        self._asset_cache[add_cf.sid] = add_cf
         self._asset_cache[mul_cf.sid] = mul_cf
-        return cf if adjustment is None else cf.adj(adjustment)
+        self._asset_cache[add_cf.sid] = add_cf
+
+        return {None: cf, 'mul': mul_cf, 'add': add_cf}[adjustment]
 
     def _make_sids(tblattr):
         def _(self):
