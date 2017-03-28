@@ -1051,26 +1051,10 @@ class AssetFinder(object):
             end_date=oc.end_date,
             exchange=exchange,
         )
-        _no_adjustment_cf = cf_template(sid=sid)
-        _mul_cf = cf_template(sid=mul_sid, adjustment='mul')
-        _add_cf = cf_template(sid=add_sid, adjustment='add')
-        adjustment_children = {
-            None: _no_adjustment_cf,
-            'mul': _mul_cf,
-            'add': _add_cf,
-        }
 
-        cf = cf_template(sid=sid, adjustment_children=adjustment_children)
-        mul_cf = cf_template(
-            sid=mul_sid,
-            adjustment='mul',
-            adjustment_children=adjustment_children,
-        )
-        add_cf = cf_template(
-            sid=add_sid,
-            adjustment='add',
-            adjustment_children=adjustment_children,
-        )
+        cf = cf_template(sid=sid)
+        mul_cf = cf_template(sid=mul_sid, adjustment='mul')
+        add_cf = cf_template(sid=add_sid, adjustment='add')
 
         self._asset_cache[cf.sid] = cf
         self._asset_cache[mul_cf.sid] = mul_cf
